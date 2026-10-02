@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pump Manager</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#16181a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pump Manager">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e7e8e5; --surface:#ffffff; --ink:#16181a; --muted:#62676b; --line:#d3d5d1;
+  --petrol:#d9461f; --petrol-soft:#fbe3da; --diesel:#14659a; --diesel-soft:#d9eaf5;
+  --signal:#f2c200; --signal-ink:#16181a; --danger:#b3261e; --ok:#1b7a43;
+  --display:#101214; --led:#ffb71c; --nav:#16181a; --navink:#e7e8e5; --navon:#f2c200;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121415; --surface:#1c1f21; --ink:#eceeea; --muted:#9aa09f; --line:#33373a;
+    --petrol:#ff7a52; --petrol-soft:#3a1e15; --diesel:#5ab4ee; --diesel-soft:#12303f;
+    --danger:#ff7b70; --ok:#4cc480; --display:#0a0b0c; --nav:#0b0c0d;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121415; --surface:#1c1f21; --ink:#eceeea; --muted:#9aa09f; --line:#33373a;
+  --petrol:#ff7a52; --petrol-soft:#3a1e15; --diesel:#5ab4ee; --diesel-soft:#12303f;
+  --danger:#ff7b70; --ok:#4cc480; --display:#0a0b0c; --nav:#0b0c0d;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.4}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;margin:0;font-weight:700;letter-spacing:.2px}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px 110px}
+.muted{color:var(--muted)} .sm{font-size:13px} .bold{font-weight:600}
+.between{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.row{display:flex;gap:10px;align-items:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mt{margin-top:12px} .mt2{margin-top:20px}
+
+/* header: forecourt sign */
+.hd{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--nav);color:var(--navink);margin:0 -14px;padding:10px 14px 9px;border-bottom:4px solid var(--signal)}
+.hd h1{font-size:25px;line-height:1.05}
+.hd .sub{font-size:13px;opacity:.75}
+.hd .back{background:none;border:0;color:var(--signal);font-weight:600;padding:2px 0;margin-bottom:2px;cursor:pointer;font-size:15px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:12px}
+.card h2{font-size:21px;margin-bottom:8px}
+.card.flat{padding:0;overflow:hidden}
+
+/* pump display hero */
+.pump{background:var(--display);color:var(--led);border-radius:6px;margin-top:14px;padding:14px 16px 12px;border:3px solid #2a2d30;box-shadow:inset 0 0 0 2px #000}
+.pump .lbl{font-size:14px;color:#c9c3b3;font-weight:500}
+.pump .num{font-family:"Share Tech Mono",ui-monospace,Menlo,monospace;font-size:44px;line-height:1.05;letter-spacing:1px;text-shadow:0 0 10px rgba(255,183,28,.35)}
+.pump .num small{font-size:20px;opacity:.8}
+.pump .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;padding-top:10px;border-top:1px dashed #4a4636}
+.pump .two .num{font-size:26px}
+.pump .tagp{color:#ff8a63}.pump .tagd{color:#74c3f2}
+.pump .two .num{color:var(--led)}
+
+.chip{display:inline-block;font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--line);color:var(--ink)}
+.chip.bad{background:var(--danger);color:#fff}
+.chip.ok{background:var(--ok);color:#fff}
+
+.f-petrol{--fc:var(--petrol);--fs:var(--petrol-soft)}
+.f-diesel{--fc:var(--diesel);--fs:var(--diesel-soft)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--fc);margin-right:6px}
+
+.gauge{height:14px;background:var(--line);border-radius:3px;overflow:hidden;margin:8px 0 6px;position:relative}
+.gauge i{display:block;height:100%;background:var(--fc)}
+.tank .big{font-family:"Barlow Condensed",sans-serif;font-size:38px;font-weight:700;line-height:1}
+.tank .big small{font-size:18px;color:var(--muted);font-weight:500}
+.tank{border-left:6px solid var(--fc)}
+
+.btn{border:0;border-radius:8px;padding:12px 16px;font-weight:600;cursor:pointer;background:var(--signal);color:var(--signal-ink);min-height:46px}
+.btn.block{width:100%}
+.btn.ghost{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:14px}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.nav button:focus-visible{outline:3px solid var(--signal);outline-offset:1px}
+
+.fld{display:block;margin-top:10px}
+.fld>span{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
+input,select,textarea{width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:8px;padding:11px 12px;min-height:46px}
+input:focus,select:focus,textarea:focus{border-color:var(--ink)}
+textarea{min-height:120px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{border:1.5px solid var(--line);background:var(--surface);border-radius:8px;padding:11px;font-weight:600;cursor:pointer}
+.seg button.on{background:var(--fc);border-color:var(--fc);color:#fff}
+.seg button[data-v="petrol"]{--fc:var(--petrol)} .seg button[data-v="diesel"]{--fc:var(--diesel)}
+
+/* machine cards */
+.mcard{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--fc);border-radius:10px;padding:12px;margin-top:10px}
+.mcard.warn{border-color:var(--danger);border-left-color:var(--danger)}
+.mhead{display:flex;align-items:center;gap:10px}
+.mtag{background:var(--fc);color:#fff;font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:19px;border-radius:6px;padding:0 9px;line-height:30px}
+.mhead .sold{margin-left:auto;font-weight:600;font-size:14px;text-align:right}
+.mcard.warn .sold{color:var(--danger)}
+.mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.mrow label span{display:block;font-size:13px;color:var(--muted);margin-bottom:3px}
+.mrow input{font-family:"Share Tech Mono",ui-monospace,monospace;font-size:19px;letter-spacing:.5px}
+
+.item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--line);cursor:default}
+.item:first-child{border-top:0}
+.item.tap{cursor:pointer}
+.item .grow{flex:1;min-width:0}
+.item .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.amt{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:21px;white-space:nowrap}
+.amt.neg{color:var(--danger)} .amt.pos{color:var(--ok)}
+.icon-btn{background:none;border:0;color:var(--muted);font-size:20px;padding:6px 8px;cursor:pointer}
+.empty{padding:22px 14px;text-align:center;color:var(--muted)}
+
+.tally .line{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line)}
+.tally .line:last-child{border:0}
+.tally .total{font-family:"Barlow Condensed",sans-serif;font-size:26px;font-weight:700;border-top:2px solid var(--ink);margin-top:4px;padding-top:8px}
+
+.menu .item{padding:15px 14px}
+.menu .arrow{color:var(--muted);font-size:20px}
+
+.bars{display:flex;align-items:flex-end;gap:8px;height:110px;margin-top:8px}
+.bars div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:11px;color:var(--muted)}
+.bars i{display:block;width:100%;background:var(--signal);border-radius:3px 3px 0 0;min-height:2px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:480px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+th{font-weight:600;color:var(--muted)}
+
+/* nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--nav);display:grid;grid-template-columns:repeat(5,1fr);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));border-top:3px solid var(--signal)}
+.nav button{background:none;border:0;color:var(--navink);opacity:.7;padding:7px 2px 5px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:600;cursor:pointer;border-radius:8px}
+.nav button.on{opacity:1;color:var(--navon)}
+.nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* sheet */
+#sheet{position:fixed;inset:0;z-index:20;display:none}
+#sheet.open{display:block}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.panel{position:absolute;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--surface);border-radius:16px 16px 0 0;padding:8px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:92%;overflow-y:auto;animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.grab{width:42px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 8px}
+.ph{display:flex;justify-content:space-between;align-items:center}
+.ph h3{font-size:24px}
+.x{background:none;border:0;font-size:22px;color:var(--muted);padding:6px 8px;cursor:pointer}
+.live{background:var(--bg);border-radius:8px;padding:10px 12px;margin-top:10px;font-weight:600}
+
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:99px;font-weight:600;font-size:14px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.panel{animation:none}#toast{transition:none}}
+.datebar{display:flex;gap:8px;align-items:stretch;margin-top:8px}
+.datebar>button{width:48px;border:0;border-radius:8px;background:#2b2f33;color:var(--signal);font-size:28px;font-weight:700;cursor:pointer;line-height:1}
+.datebar>button:disabled{opacity:.3;cursor:default}
+.dpick{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#2b2f33;border-radius:8px;min-height:48px;cursor:pointer}
+.dpick span{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-size:22px;font-weight:700;color:#fff;line-height:1.1}
+.dpick small{font-size:12px;color:var(--signal)}
+.dpick input{position:absolute;inset:0;opacity:0;width:100%;height:100%;min-height:0;padding:0;border:0;cursor:pointer}
+.todaybtn{margin-top:6px;background:none;border:1.5px solid var(--signal);color:var(--signal);border-radius:99px;padding:3px 14px;font-weight:600;font-size:13px;cursor:pointer}
+.sec{border-left:6px solid var(--fc);padding:2px 0 10px 12px;margin-top:14px}
+.sec h4{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-size:21px;margin:0;color:var(--fc)}
+.seg.mode button.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.rate.attn{border-left:6px solid var(--signal)}
+.rates{display:flex;gap:16px;flex-wrap:wrap}
+.rates b{font-family:"Barlow Condensed",sans-serif;font-size:20px}
+.warnbox{background:var(--bg);border-left:5px solid var(--signal);padding:10px 12px;border-radius:6px;margin-top:12px;font-size:14px}
+.warnbox.bad{border-left-color:var(--danger)}
+.tk{margin-top:10px}
+.tk .gauge{height:9px;margin:3px 0 0}
+.seg.mini{margin-top:6px}.seg.mini button{padding:8px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd" id="hd"></div>
+  <main id="app"></main>
+</div>
+<nav class="nav" id="nav" aria-label="Main"></nav>
+<div id="sheet"></div>
+<div id="toast" role="status"></div>
+
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+</script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const KEY='pump_manager_v1';
+let rk=null;
+const pad=n=>String(n).padStart(2,'0');
+const ymd=(d=new Date())=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const niceDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})};
+const shortDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isNum=v=>v!==null&&v!==undefined&&v!==''&&!isNaN(+v);
+const r2=n=>Math.round((+n+Number.EPSILON)*100)/100;
+const fmt=(n,d=0)=>Number(n||0).toLocaleString('en-PK',{minimumFractionDigits:0,maximumFractionDigits:d});
+const fmtL=n=>fmt(r2(n),2);
+const money=n=>'Rs '+fmt(Math.round(n||0));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+const FUELS={petrol:{name:'Petrol'},diesel:{name:'Diesel'}};
+const MACH=[1,2,3,4].map(i=>({id:'P'+i,fuel:'petrol',name:'Petrol Machine '+i}))
+  .concat([1,2,3].map(i=>({id:'D'+i,fuel:'diesel',name:'Diesel Machine '+i})));
+const EXP_CATS=['Salary','Electricity','Rent','Maintenance','Tea & food','Other'];
+
+function defTanks(){return[
+ {id:'TP1',fuel:'petrol',name:'Petrol Tank 1',cap:15000,initial:0,low:1500},
+ {id:'TP2',fuel:'petrol',name:'Petrol Tank 2',cap:15000,initial:0,low:1500},
+ {id:'TD1',fuel:'diesel',name:'Diesel Tank 1',cap:15000,initial:0,low:1500},
+ {id:'TD2',fuel:'diesel',name:'Diesel Tank 2',cap:15000,initial:0,low:1500}];}
+function defMap(split){return split?{P1:'TP1',P2:'TP1',P3:'TP2',P4:'TP2',D1:'TD1',D2:'TD1',D3:'TD2'}:{P1:'TP1',P2:'TP1',P3:'TP1',P4:'TP1',D1:'TD1',D2:'TD1',D3:'TD1'};}
+function defaults(){return{tankList:defTanks(),machTank:defMap(true),setup:false,pump:'My Petrol Pump',prices:{petrol:0,diesel:0},rates:{},workDate:null,
+  tanks:{petrol:{cap:30000,initial:0,low:3000},diesel:{cap:30000,initial:0,low:3000}},
+  readings:{},purchases:[],adjust:[],customers:[],credits:[],payments:[],expenses:[]};}
+let S;
+function migrate(o0){const had=!!o0.tankList;const o=Object.assign(defaults(),o0);o.rates=o.rates||{};
+  if(!had){const t=o0.tanks||{};
+    o.tankList=defTanks().map(k=>{const old=t[k.fuel];
+      if(k.id==='TP1'||k.id==='TD1')return old?{...k,cap:old.cap,initial:old.initial,low:old.low}:k;
+      return{...k,cap:0,initial:0,low:0};});
+    o.machTank=defMap(false);}
+  for(const d in o.readings){const p=o.readings[d].price;if(p&&p.petrol>0&&p.diesel>0&&!o.rates[d])o.rates[d]={petrol:+p.petrol,diesel:+p.diesel};}
+  return o;}
+function load(){try{const r=localStorage.getItem(KEY);if(r)return migrate(JSON.parse(r));}catch(e){}return defaults();}
+function save(){rk=null;try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast('Could not save on this device');}}
+S=load();
+
+/* ---------- calculations ---------- */
+function rateKeys(){return rk||(rk=Object.keys(S.rates).sort());}
+function rateFor(date){const ks=rateKeys();for(let i=ks.length-1;i>=0;i--){if(ks[i]<=date)return S.rates[ks[i]];}return S.prices;}
+function dayLitres(date){
+  const out={petrol:{l:0,amt:0},diesel:{l:0,amt:0}};const r=S.readings[date];if(!r)return out;const rt=rateFor(date);
+  MACH.forEach(m=>{const x=r.m&&r.m[m.id];
+    if(x&&isNum(x.o)&&isNum(x.c)&&+x.c>=+x.o){const l=r2(x.c-x.o);const p=rt[m.fuel]||0;out[m.fuel].l+=l;out[m.fuel].amt+=l*p;}});
+  return out;
+}
+function prevClose(id,date){
+  const ds=Object.keys(S.readings).filter(d=>d<date).sort().reverse();
+  for(const d of ds){const x=S.readings[d].m&&S.readings[d].m[id];if(x&&isNum(x.c))return +x.c;}
+  return null;
+}
+const firstTank=f=>(S.tankList.find(t=>t.fuel===f&&t.cap>0)||S.tankList.find(t=>t.fuel===f)).id;
+const tName=tid=>(S.tankList.find(t=>t.id===tid)||{name:'Tank'}).name;
+function tankSold(tid){let t=0;
+  for(const d in S.readings){const r=S.readings[d];
+    MACH.forEach(m=>{if(S.machTank[m.id]!==tid)return;const x=r.m&&r.m[m.id];
+      if(x&&isNum(x.o)&&isNum(x.c)&&+x.c>=+x.o)t+=r2(x.c-x.o);});}
+  return t;}
+function tankStock(tid){const tk=S.tankList.find(t=>t.id===tid),f=tk.fuel;
+  const p=S.purchases.filter(x=>x.fuel===f&&(x.tank||firstTank(f))===tid).reduce((a,x)=>a+x.litres,0);
+  const a=S.adjust.filter(x=>x.fuel===f&&(x.tank||firstTank(f))===tid).reduce((s,x)=>s+x.litres,0);
+  return r2(tk.initial+p+a-tankSold(tid));}
+function stockOf(f){return r2(S.tankList.filter(t=>t.fuel===f&&t.cap>0).reduce((s,t)=>s+tankStock(t.id),0));}
+function daysLeft(f,cur){
+  const days=[];for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);days.push(ymd(d));}
+  const vals=days.map(d=>dayLitres(d)[f].l).filter(v=>v>0);
+  if(!vals.length)return null;const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  return avg>0?Math.floor(Math.max(cur,0)/avg):null;
+}
+const sum=(arr,k)=>arr.reduce((a,x)=>a+x[k],0);
+function cash(date){
+  const d=dayLitres(date);const sales=d.petrol.amt+d.diesel.amt;
+  const credit=sum(S.credits.filter(c=>c.date===date),'amount');
+  const rec=sum(S.payments.filter(c=>c.date===date),'amount');
+  const exp=sum(S.expenses.filter(c=>c.date===date),'amount');
+  return{sales,credit,rec,exp,cash:sales-credit+rec-exp};
+}
+const custBal=id=>sum(S.credits.filter(c=>c.cust===id),'amount')-sum(S.payments.filter(p=>p.cust===id),'amount');
+const custName=id=>(S.customers.find(c=>c.id===id)||{name:'(deleted)'}).name;
+
+/* ---------- ui helpers ---------- */
+let view='home',sub=null,custQ='';
+function addDays(s,n){const [y,m,d]=s.split('-').map(Number);return ymd(new Date(y,m-1,d+n));}
+function dayWord(s){const t=ymd();if(s===t)return 'Today';if(s===addDays(t,1))return 'Tomorrow';if(s===addDays(t,-1))return 'Yesterday';return '';}
+let curDate=(S.workDate&&S.workDate>ymd())?S.workDate:ymd();
+let cModes={p:'rs',d:'rs'};
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200);}
+function sheet(title,body){
+  $('#sheet').innerHTML=`<div class="scrim" data-act="closeSheet"></div><div class="panel" role="dialog" aria-label="${esc(title)}"><div class="grab"></div><div class="ph"><h3>${esc(title)}</h3><button class="x" data-act="closeSheet" aria-label="Close">✕</button></div>${body}</div>`;
+  $('#sheet').classList.add('open');
+}
+function closeSheet(){$('#sheet').classList.remove('open');$('#sheet').innerHTML='';}
+let pendingConfirm=null;
+function confirmBox(msg,label,fn){pendingConfirm=fn;
+  sheet('Are you sure?',`<p>${esc(msg)}</p><div class="grid2 mt"><button class="btn ghost" data-act="closeSheet">Cancel</button><button class="btn danger" data-act="doConfirm">${esc(label)}</button></div>`);}
+const F=(label,id,val='',attrs='')=>`<label class="fld"><span>${label}</span><input id="${id}" value="${esc(val)}" ${attrs}></label>`;
+const N=(label,id,val='',extra='')=>F(label,id,val,`type="number" inputmode="decimal" step="any" min="0" ${extra}`);
+const D=(label,id,val)=>F(label,id,val,'type="date"');
+const seg=(id,val,live)=>`<div class="seg f-${val}" id="${id}" data-val="${val}" ${live?`data-live="${live}"`:''}><button type="button" data-act="seg" data-v="petrol" class="${val==='petrol'?'on':''}">Petrol</button><button type="button" data-act="seg" data-v="diesel" class="${val==='diesel'?'on':''}">Diesel</button></div>`;
+const getSeg=id=>$('#'+id).dataset.val;
+const val=id=>($('#'+id)||{}).value;
+
+const ICON={
+ home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+ meters:'<circle cx="12" cy="13" r="8"/><path d="M12 13l4-4"/><path d="M8 5l-1-2M16 5l1-2"/>',
+ stock:'<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 12h16"/><path d="M8 5V3h8v2"/>',
+ udhaar:'<path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3V4z"/><path d="M9 9h6M9 13h6"/>',
+ more:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'
+};
+const NAV=[['home','Home'],['meters','Meters'],['stock','Stock'],['udhaar','Udhaar'],['more','More']];
+
+/* ---------- views ---------- */
+function vSetup(){
+  const row=t=>`<div class="sec f-${t.fuel}"><h4>${t.name}</h4><div class="grid2">${N('Tank size (L)','s-c-'+t.id,t.cap)}${N('Stock now (L)','s-i-'+t.id,'')}</div></div>`;
+  return `<div class="card"><h2>Set up your pump</h2><p class="muted sm">Enter these once. You can change them later in More → Settings.</p>
+  ${F('Pump name','s-name',S.pump==='My Petrol Pump'?'':S.pump,'placeholder="e.g. Al-Madina Petroleum"')}
+  <div class="grid2">${N('Petrol rate (Rs/L)','s-pp','')}${N('Diesel rate (Rs/L)','s-dp','')}</div>
+  ${defTanks().map(row).join('')}
+  <p class="muted sm mt">Take the stock from your dip-rod reading today. If you have only one tank of a fuel, put 0 as the size of the second tank.</p>
+  <button class="btn block mt" data-act="finishSetup">Start managing my pump</button></div>`;
+}
+
+function tankCard(f){
+  const tks=S.tankList.filter(t=>t.fuel===f&&t.cap>0);
+  if(!tks.length)return `<div class="card tank f-${f}"><b>${FUELS[f].name}</b><div class="muted sm">No tank set up. Add one in More → Settings.</div></div>`;
+  const cur=stockOf(f),cap=tks.reduce((s,t)=>s+t.cap,0),pct=Math.max(0,Math.min(100,cap?cur/cap*100:0));
+  const lowT=tks.filter(t=>tankStock(t.id)<=t.low),dl=daysLeft(f,cur);
+  return `<div class="card tank f-${f}"><div class="between"><b>${FUELS[f].name}</b><span class="chip ${lowT.length?'bad':''}">${lowT.length?'Low · '+esc(lowT.map(t=>t.name).join(', ')):Math.round(pct)+'% full'}</span></div>
+  <div class="big">${fmtL(cur)} <small>litres${tks.length>1?' in '+tks.length+' tanks':''}</small></div><div class="gauge"><i style="width:${pct}%"></i></div>
+  ${tks.length>1?tks.map(t=>{const s=tankStock(t.id),p=Math.max(0,Math.min(100,t.cap?s/t.cap*100:0));
+    return `<div class="tk"><div class="between sm"><span>${esc(t.name)}</span><b>${fmtL(s)} L <span class="muted" style="font-weight:500">of ${fmt(t.cap)}</span></b></div><div class="gauge"><i style="width:${p}%"></i></div></div>`;}).join(''):''}
+  <div class="muted sm" style="margin-top:8px">Total size ${fmt(cap)} L${dl!==null?` · about ${dl} day${dl===1?'':'s'} left at current sales`:''}</div></div>`;
+}
+
+function rateCard(dt,withBtn){
+  const rt=rateFor(dt),t=ymd(),needs=dt>=t&&!S.rates[dt];
+  const nxt=rateKeys().find(k=>k>dt);const up=nxt?S.rates[nxt]:null;
+  return `<div class="card rate ${needs?'attn':''}"><div class="between" style="align-items:flex-start"><div><div class="muted sm">Rates for ${esc(dayWord(dt)||shortDate(dt))}</div>
+    <div class="rates"><span class="f-petrol"><span class="dot"></span>Petrol <b>Rs ${fmt(rt.petrol,2)}</b></span><span class="f-diesel"><span class="dot"></span>Diesel <b>Rs ${fmt(rt.diesel,2)}</b></span></div></div>
+    <button class="btn sm" data-act="openRate">${needs?'Set rates':'Change rate'}</button></div>
+    ${needs?'<div class="sm mt">These are the previous rates. Tap “Set rates” to enter the new rates for this day, or save the same rates to confirm them.</div>':''}
+    ${up?`<div class="sm mt"><b>New rate from ${shortDate(nxt)}:</b> Petrol Rs ${fmt(up.petrol,2)}, Diesel Rs ${fmt(up.diesel,2)}</div>`:''}
+    ${withBtn||''}</div>`;
+}
+
+function vHome(){
+  const t=ymd(),dt=curDate,d=dayLitres(dt),tl=d.petrol.l+d.diesel.l,ta=d.petrol.amt+d.diesel.amt,c=cash(dt);
+  const word=dayWord(dt)||shortDate(dt);
+  const debtors=S.customers.map(x=>({n:x.name,b:custBal(x.id)})).filter(x=>x.b>0).sort((a,b)=>b.b-a.b);
+  const owed=debtors.reduce((a,x)=>a+x.b,0);
+  return `<div class="pump"><div class="lbl">Total sale · ${esc(word)}</div><div class="num">${money(ta)}</div>
+    <div class="num" style="font-size:26px;margin-top:2px">${fmtL(tl)} <small>L</small></div>
+    <div class="two"><div><div class="lbl tagp">Petrol</div><div class="num">${fmtL(d.petrol.l)}<small> L</small></div><div class="lbl">${money(d.petrol.amt)}</div></div>
+    <div><div class="lbl tagd">Diesel</div><div class="num">${fmtL(d.diesel.l)}<small> L</small></div><div class="lbl">${money(d.diesel.amt)}</div></div></div></div>
+  ${rateCard(dt)}
+  ${tl>0?'':`<div class="card" style="border-left:6px solid var(--signal)"><b>Meter readings for ${esc(word)} are not entered yet.</b><div class="mt"><button class="btn sm" data-act="nav" data-v="meters">Enter meter readings</button></div></div>`}
+  <div class="grid2" style="margin-top:12px"><button class="btn" data-act="openTanker">+ Tanker received</button><button class="btn" data-act="openCredit">+ Udhaar (loan)</button></div>
+  ${dt===t?`<button class="btn ghost block mt" data-act="openEndDay">End day and start next day</button>`:''}
+  <div class="card tally"><h2>Cash in hand · ${esc(word)}</h2>
+    <div class="line"><span>Total sale</span><b>${money(c.sales)}</b></div>
+    <div class="line"><span>Less: given on udhaar</span><b>− ${money(c.credit)}</b></div>
+    <div class="line"><span>Add: udhaar money received</span><b>+ ${money(c.rec)}</b></div>
+    <div class="line"><span>Less: expenses</span><b>− ${money(c.exp)}</b></div>
+    <div class="line total"><span>Cash to keep / deposit</span><span>${money(c.cash)}</span></div></div>
+  ${tankCard('petrol')}${tankCard('diesel')}
+  <div class="card flat"><div class="between" style="padding:14px 14px 8px"><h2 style="margin:0">Udhaar to collect</h2><span class="amt neg">${money(owed)}</span></div>
+    ${debtors.length?debtors.slice(0,3).map(x=>`<div class="item"><span class="grow t">${esc(x.n)}</span><span class="amt neg">${money(x.b)}</span></div>`).join(''):'<div class="empty" style="padding:10px 14px 16px">No one owes you anything right now.</div>'}
+    ${debtors.length?`<div class="item tap" data-act="nav" data-v="udhaar"><span class="grow bold">See all ${debtors.length} customer${debtors.length===1?'':'s'}</span><span class="muted">›</span></div>`:''}</div>`;
+}
+
+function vMeters(){
+  const rec=S.readings[curDate];
+  const cards=MACH.map(m=>{
+    const sv=rec&&rec.m&&rec.m[m.id];
+    const o=sv&&isNum(sv.o)?sv.o:(prevClose(m.id,curDate));
+    const c=sv&&isNum(sv.c)?sv.c:'';
+    return `<div class="mcard f-${m.fuel}" id="mc-${m.id}"><div class="mhead"><span class="mtag">${m.id}</span><b>${m.name}</b><span class="sold" id="s-${m.id}">—</span></div>
+    <div class="mrow"><label><span>Opening reading</span><input id="o-${m.id}" type="number" inputmode="decimal" step="any" min="0" value="${o==null?'':o}" placeholder="meter now"></label>
+    <label><span>Closing reading</span><input id="c-${m.id}" type="number" inputmode="decimal" step="any" min="0" value="${c}" placeholder="end of day"></label></div></div>`;}).join('');
+  return `${rateCard(curDate)}
+    <p class="muted sm" style="margin:10px 2px 0">Opening is filled from the last closing. Change it only if the meter differs.</p>
+    ${cards}
+    <div class="card tally" id="mtot"></div>
+    <button class="btn block mt" data-act="saveMeters">Save readings for ${shortDate(curDate)}</button>`;
+}
+function updateMeterLive(){
+  if(!$('#mtot'))return;
+  const pr=rateFor(curDate);
+  const t={petrol:{l:0,a:0},diesel:{l:0,a:0}};
+  MACH.forEach(m=>{const o=val('o-'+m.id),c=val('c-'+m.id),out=$('#s-'+m.id),card=$('#mc-'+m.id);
+    card.classList.remove('warn');
+    if(isNum(o)&&isNum(c)){
+      if(+c<+o){out.textContent='Closing is less than opening';card.classList.add('warn');}
+      else{const l=r2(+c-+o);out.innerHTML=`${fmtL(l)} L<br><span class="muted">${money(l*pr[m.fuel])}</span>`;t[m.fuel].l+=l;t[m.fuel].a+=l*pr[m.fuel];}
+    }else out.textContent='—';});
+  $('#mtot').innerHTML=`<h2>Sale for the day</h2>
+    <div class="line"><span>Petrol</span><b>${fmtL(t.petrol.l)} L · ${money(t.petrol.a)}</b></div>
+    <div class="line"><span>Diesel</span><b>${fmtL(t.diesel.l)} L · ${money(t.diesel.a)}</b></div>
+    <div class="line total"><span>Total</span><span>${money(t.petrol.a+t.diesel.a)}</span></div>`;
+}
+
+function vStock(){
+  const hist=S.purchases.map(p=>({...p,k:'purchases'})).concat(S.adjust.map(p=>({...p,k:'adjust'}))).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,40);
+  const tn=h=>esc(tName(h.tank||firstTank(h.fuel)));
+  return `<div class="grid2" style="margin-top:12px"><button class="btn" data-act="openTanker">+ Tanker received</button><button class="btn ghost" data-act="openDip">Correct with dip</button></div>
+  ${tankCard('petrol')}${tankCard('diesel')}
+  <div class="card flat mt"><div style="padding:14px 14px 4px"><h2>Stock history</h2></div>
+  ${hist.length?hist.map(h=>h.k==='purchases'
+    ?`<div class="item f-${h.fuel}"><span class="dot"></span><div class="grow"><div class="t">${FUELS[h.fuel].name} received · ${fmtL(h.litres)} L</div><div class="muted sm">${shortDate(h.date)} · ${tn(h)}${h.supplier?' · '+esc(h.supplier):''}${h.rate?' · Rs '+fmt(h.rate,2)+'/L':''}</div></div>${h.rate?`<span class="amt">${money(h.rate*h.litres)}</span>`:''}<button class="icon-btn" aria-label="Delete" data-act="del" data-kind="purchases" data-id="${h.id}">🗑</button></div>`
+    :`<div class="item f-${h.fuel}"><span class="dot"></span><div class="grow"><div class="t">${tn(h)} dip correction · ${h.litres>0?'+':''}${fmtL(h.litres)} L</div><div class="muted sm">${shortDate(h.date)} · tank corrected to dip reading</div></div><button class="icon-btn" aria-label="Delete" data-act="del" data-kind="adjust" data-id="${h.id}">🗑</button></div>`).join('')
+    :'<div class="empty">No tanker deliveries yet. Tap “Tanker received” when fuel arrives.</div>'}</div>`;
+}
+
+function vUdhaar(){
+  const q=custQ.trim().toLowerCase();
+  const list=S.customers.map(c=>({...c,bal:custBal(c.id)})).filter(c=>!q||c.name.toLowerCase().includes(q)).sort((a,b)=>b.bal-a.bal||a.name.localeCompare(b.name));
+  const owed=S.customers.reduce((a,c)=>a+Math.max(0,custBal(c.id)),0);
+  return `<div class="card" style="border-left:6px solid var(--danger)"><div class="muted sm">Total udhaar to collect</div><div class="amt neg" style="font-size:36px">${money(owed)}</div></div>
+  <div class="grid2" style="margin-top:12px"><button class="btn" data-act="openCredit">+ Give on udhaar</button><button class="btn ghost" data-act="openCust">+ New customer</button></div>
+  <label class="fld"><span class="muted" style="font-weight:500">Search customer</span><input id="custQ" type="search" value="${esc(custQ)}" placeholder="Type a name"></label>
+  <div class="card flat mt">${list.length?list.map(c=>`<div class="item tap" data-act="custDetail" data-id="${c.id}"><div class="grow"><div class="t">${esc(c.name)}</div><div class="muted sm">${c.phone?esc(c.phone):'No phone saved'}</div></div><span class="amt ${c.bal>0?'neg':(c.bal<0?'pos':'')}">${c.bal<0?'Advance '+money(-c.bal):money(c.bal)}</span><span class="muted">›</span></div>`).join('')
+    :`<div class="empty">${S.customers.length?'No customer matches that name.':'No customers yet. Add the people who take fuel on udhaar.'}</div>`}</div>`;
+}
+
+function custDetail(id){
+  const c=S.customers.find(x=>x.id===id);if(!c)return;
+  const bal=custBal(id);
+  const led=S.credits.filter(x=>x.cust===id).map(x=>({...x,k:'credits'})).concat(S.payments.filter(x=>x.cust===id).map(x=>({...x,k:'payments'}))).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  let wa='';
+  if(c.phone&&bal>0){let n=c.phone.replace(/\D/g,'');if(n.startsWith('0'))n='92'+n.slice(1);
+    const msg=encodeURIComponent(`Assalam o Alaikum ${c.name}, your pending balance at ${S.pump} is ${money(bal)}. Please pay when you can. Thank you.`);
+    wa=`<a class="btn sm ghost" style="text-decoration:none;display:inline-flex;align-items:center" target="_blank" rel="noopener" href="https://wa.me/${n}?text=${msg}">WhatsApp reminder</a>`;}
+  sheet(c.name,`<div class="muted sm">${c.phone?esc(c.phone):'No phone saved'}</div>
+  <div class="amt ${bal>0?'neg':'pos'}" style="font-size:34px;margin:6px 0">${bal<0?'Advance '+money(-bal):money(bal)}</div>
+  <div class="grid2"><button class="btn" data-act="openCredit" data-cust="${id}">+ Fuel on udhaar</button><button class="btn" data-act="openPay" data-cust="${id}">Receive payment</button></div>
+  <div class="row mt" style="flex-wrap:wrap">${wa}<button class="btn sm ghost" data-act="delCust" data-id="${id}">Delete customer</button></div>
+  <div class="card flat mt" style="margin-bottom:0">${led.length?led.map(x=>x.k==='credits'
+    ?`<div class="item f-${x.fuel}"><span class="dot"></span><div class="grow"><div class="t">${FUELS[x.fuel].name} · ${fmtL(x.litres)} L</div><div class="muted sm">${shortDate(x.date)}${x.vehicle?' · '+esc(x.vehicle):''}</div></div><span class="amt neg">${money(x.amount)}</span><button class="icon-btn" aria-label="Delete" data-act="del" data-kind="credits" data-id="${x.id}" data-cust="${id}">🗑</button></div>`
+    :`<div class="item"><div class="grow"><div class="t">Payment received</div><div class="muted sm">${shortDate(x.date)}${x.note?' · '+esc(x.note):''}</div></div><span class="amt pos">${money(x.amount)}</span><button class="icon-btn" aria-label="Delete" data-act="del" data-kind="payments" data-id="${x.id}" data-cust="${id}">🗑</button></div>`).join('')
+    :'<div class="empty">No entries yet.</div>'}</div>`);
+}
+
+function vMore(){
+  if(sub==='expenses')return vExpenses();
+  if(sub==='reports')return vReports();
+  if(sub==='settings')return vSettings();
+  if(sub==='backup')return vBackup();
+  if(sub==='help')return vHelp();
+  const row=(k,t,d)=>`<div class="item tap" data-act="sub" data-v="${k}"><div class="grow"><div class="t">${t}</div><div class="muted sm">${d}</div></div><span class="arrow">›</span></div>`;
+  return `<div class="card flat menu mt">${row('expenses','Expenses','Salary, electricity, rent and other costs')}${row('reports','Daily reports','Sales, udhaar and cash for each day')}${row('settings','Settings','Pump name, rates, tank sizes')}${row('backup','Backup and restore','Keep your data safe')}${row('help','How to use','Short guide for daily work')}</div>`;
+}
+
+function vExpenses(){
+  const mk=ymd().slice(0,7);
+  const list=S.expenses.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,60);
+  const month=sum(S.expenses.filter(e=>e.date.startsWith(mk)),'amount');
+  return `<div class="card"><div class="muted sm">Expenses this month</div><div class="amt" style="font-size:34px">${money(month)}</div></div>
+  <button class="btn block mt" data-act="openExpense">+ Add expense</button>
+  <div class="card flat mt">${list.length?list.map(e=>`<div class="item"><div class="grow"><div class="t">${esc(e.cat)}</div><div class="muted sm">${shortDate(e.date)}${e.note?' · '+esc(e.note):''}</div></div><span class="amt">${money(e.amount)}</span><button class="icon-btn" aria-label="Delete" data-act="del" data-kind="expenses" data-id="${e.id}">🗑</button></div>`).join(''):'<div class="empty">No expenses recorded.</div>'}</div>`;
+}
+
+function vReports(){
+  const set=new Set(Object.keys(S.readings));
+  ['credits','payments','expenses'].forEach(k=>S[k].forEach(x=>set.add(x.date)));
+  const dates=[...set].sort().reverse().slice(0,30);
+  const rows=dates.map(d=>{const x=dayLitres(d),c=cash(d);return{d,pl:x.petrol.l,dl:x.diesel.l,...c};});
+  const mk=ymd().slice(0,7);const mrows=rows.filter(r=>r.d.startsWith(mk));
+  const days=[];for(let i=6;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);const k=ymd(dt);days.push({k,v:cash(k).sales});}
+  const mx=Math.max(1,...days.map(x=>x.v));
+  return `<div class="card"><h2>This month</h2>
+    <div class="tally"><div class="line"><span>Petrol sold</span><b>${fmtL(sum(mrows,'pl'))} L</b></div><div class="line"><span>Diesel sold</span><b>${fmtL(sum(mrows,'dl'))} L</b></div>
+    <div class="line"><span>Total sale</span><b>${money(sum(mrows,'sales'))}</b></div><div class="line"><span>Given on udhaar</span><b>${money(sum(mrows,'credit'))}</b></div>
+    <div class="line"><span>Expenses</span><b>${money(sum(mrows,'exp'))}</b></div></div></div>
+  <div class="card"><h2>Last 7 days sale</h2><div class="bars">${days.map(x=>`<div><i style="height:${Math.round(x.v/mx*85)}%"></i><span>${x.k.slice(8)}</span></div>`).join('')}</div></div>
+  <div class="card flat mt"><div style="padding:14px 14px 6px"><h2>Day by day</h2></div><div class="scroll">${rows.length?`<table><thead><tr><th>Date</th><th>Petrol L</th><th>Diesel L</th><th>Sale</th><th>Udhaar</th><th>Cash</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${shortDate(r.d)}</td><td>${fmtL(r.pl)}</td><td>${fmtL(r.dl)}</td><td>${fmt(r.sales)}</td><td>${fmt(r.credit)}</td><td><b>${fmt(r.cash)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Reports will appear after you save meter readings.</div>'}</div></div>`;
+}
+
+function vSettings(){
+  const tkCard=t=>`<div class="card f-${t.fuel} tank"><h2>${t.name}</h2><p class="muted sm" style="margin:0">Set the size to 0 if you do not have this tank.</p><div class="grid2">${N('Tank size (L)','st-c-'+t.id,t.cap)}${N('Low-stock alert (L)','st-l-'+t.id,t.low)}</div>${N('Starting stock (L)','st-i-'+t.id,t.initial)}</div>`;
+  const mapRow=m=>{const opts=S.tankList.filter(t=>t.fuel===m.fuel&&t.cap>0).map(t=>`<option value="${t.id}" ${S.machTank[m.id]===t.id?'selected':''}>${esc(t.name)}</option>`).join('');
+    return `<label class="fld"><span>${m.name}</span><select id="st-m-${m.id}">${opts}</select></label>`;};
+  return `<div class="card"><h2>Pump</h2>${F('Pump name','st-name',S.pump)}
+  <p class="muted sm" style="margin:10px 0 0">Petrol and diesel rates are changed from the Home tab with “Change rate”, so every day keeps its own rate.</p></div>
+  ${S.tankList.map(tkCard).join('')}
+  <div class="card"><h2>Machine to tank</h2><p class="muted sm" style="margin:0">Choose which tank each machine pumps from. That tank's stock goes down when you save the meter readings. If you just added a tank, save settings first, then come back here.</p>${MACH.map(mapRow).join('')}</div>
+  <p class="muted sm">Starting stock is the stock when you began using the app. Changing it changes the current stock. To fix stock, use “Correct with dip” in the Stock tab.</p>
+  <button class="btn block" data-act="saveSettings">Save settings</button>`;
+}
+
+function vBackup(){
+  return `<div class="card"><h2>Your data stays on this phone</h2><p class="muted sm" style="margin:0">Nothing is sent to the internet. If you clear browser data or change phone, it is lost, so copy a backup every week and save it in WhatsApp, Notes or email.</p></div>
+  <div class="card"><h2>Backup</h2><button class="btn block" data-act="exportData">Show backup text</button><textarea id="bk" class="mt" readonly style="display:none"></textarea><button class="btn ghost block mt" id="cpy" data-act="copyData" style="display:none">Copy to clipboard</button></div>
+  <div class="card"><h2>Restore</h2><p class="muted sm" style="margin:0 0 6px">Paste your backup text here. This replaces the data on this phone.</p><textarea id="rs" placeholder="Paste backup text"></textarea><button class="btn block mt" data-act="importData">Restore from backup</button></div>
+  <div class="card"><h2>Start again</h2><p class="muted sm" style="margin:0 0 8px">Deletes all readings, customers and stock records from this phone.</p><button class="btn danger block" data-act="resetAll">Delete everything</button></div>`;
+}
+
+function vHelp(){
+  return `<div class="card"><h2>Daily routine</h2><ol style="padding-left:20px;margin:0;line-height:1.7">
+  <li><b>Morning:</b> open Meters. Check each machine's opening reading matches the meter.</li>
+  <li><b>When a tanker arrives:</b> tap “Tanker received” and enter litres.</li>
+  <li><b>During the day:</b> tap “Udhaar” to write who took fuel on loan, in litres or rupees.</li>
+  <li><b>Closing time:</b> enter closing reading of all 4 petrol and 3 diesel machines and save.</li>
+  <li><b>Check Home:</b> total sale, cash to deposit and tank stock are worked out for you.</li></ol></div>
+  <div class="card"><h2>How cash is worked out</h2><p style="margin:0">Total sale from the meters, minus fuel given on udhaar, plus udhaar money received, minus expenses.</p></div>
+  <div class="card"><h2>Tank stock</h2><p style="margin:0">Stock = starting stock + tankers received − litres sold on meters. If your dip rod shows a different number, use “Correct with dip”.</p></div>`;
+}
+
+/* ---------- render ---------- */
+function datebar(){
+  const t=ymd(),tm=addDays(t,1),w=dayWord(curDate);
+  return `<div class="datebar"><button data-act="dayPrev" aria-label="Previous day">‹</button>
+    <label class="dpick"><span>${niceDate(curDate)}</span><small>${w||'Tap to choose a date'}</small><input type="date" id="dpick" value="${curDate}" max="${tm}" aria-label="Choose date"></label>
+    <button data-act="dayNext" aria-label="Next day" ${curDate>=tm?'disabled':''}>›</button></div>
+    ${curDate!==t?'<button class="todaybtn" data-act="dayToday">Go to today</button>':''}`;
+}
+function render(){
+  const app=$('#app'),hd=$('#hd'),nav=$('#nav');
+  if(!S.setup){hd.innerHTML=`<h1>Welcome</h1><div class="sub">Petrol pump manager</div>`;app.innerHTML=vSetup();nav.style.display='none';return;}
+  nav.style.display='';
+  nav.innerHTML=NAV.map(([k,t])=>`<button data-act="nav" data-v="${k}" class="${view===k?'on':''}" aria-label="${t}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${t}</button>`).join('');
+  const titles={home:S.pump,meters:'Meter readings',stock:'Fuel stock',udhaar:'Udhaar (loans)',more:{expenses:'Expenses',reports:'Daily reports',settings:'Settings',backup:'Backup and restore',help:'How to use'}[sub]||'More'};
+  const subline=view==='home'?'Daily summary':(view==='meters'?'4 petrol and 3 diesel machines':S.pump);
+  const withDate=(view==='home'||view==='meters');
+  hd.innerHTML=`${view==='more'&&sub?'<button class="back" data-act="sub" data-v="">‹ Back</button>':''}<h1>${esc(titles[view])}</h1><div class="sub">${esc(subline)}</div>${withDate?datebar():''}`;
+  app.innerHTML=({home:vHome,meters:vMeters,stock:vStock,udhaar:vUdhaar,more:vMore})[view]();
+  if(view==='meters')updateMeterLive();
+}
+function go(v,s){view=v;sub=s||null;render();window.scrollTo(0,0);}
+function setDate(d,fwd){
+  if(d>addDays(ymd(),1))return;
+  curDate=d;render();window.scrollTo(0,0);
+  if(fwd&&d>=ymd()&&!S.rates[d])openRateSheet(d);
+}
+function openRateSheet(date){
+  const rt=rateFor(date);
+  sheet('Petrol and diesel rates',`<p class="muted sm" style="margin:2px 0 0">Every day keeps its own rate. Earlier days are not changed.</p>
+  ${N('Petrol rate (Rs per litre)','rpp',rt.petrol||'','class="sel"')}
+  ${N('Diesel rate (Rs per litre)','rdd',rt.diesel||'','class="sel"')}
+  ${D('New rate starts on','rdate',date)}
+  <div class="warnbox">Is a new rate coming tomorrow? Choose tomorrow's date. Today's sales keep today's rate, and the new rate starts by itself on that day.</div>
+  <button class="btn block mt" data-act="saveRate">Save rates</button>`);
+}
+
+/* ---------- live form helpers ---------- */
+function credCalc(f){
+  const fuel=f==='p'?'petrol':'diesel',r=+(rateFor(val('cdate')||curDate)[fuel])||0,v=+val('c'+f+'v')||0,m=cModes[f];
+  const l=m==='rs'?(r?v/r:0):v,a=m==='rs'?v:v*r;
+  return{l:r2(l),a:Math.round(a),r};
+}
+const LIVE={
+  credit(e){const t=e.target;
+    ['p','d'].forEach(f=>{if(t.id==='cm'+f){const nm=getSeg('cm'+f),c=credCalc(f);
+      $('#c'+f+'v').value=nm==='rs'?c.a:c.l;cModes[f]=nm;
+      $('#cl'+f).textContent=(f==='p'?'Petrol':'Diesel')+(nm==='rs'?' amount (Rs)':' litres');}});
+    let tot=0;
+    ['p','d'].forEach(f=>{const c=credCalc(f);tot+=c.a;
+      $('#c'+f+'x').textContent=(c.a>0&&c.l>0)?(cModes[f]==='rs'?'= '+fmtL(c.l)+' litres':'= '+money(c.a)):'';});
+    $('#cft').textContent=tot?'Total udhaar '+money(tot):'Enter petrol, diesel or both.';},
+  tanker(){let tl=0,tc=0;
+    ['petrol','diesel'].forEach(f=>{const r=+val('tr-'+f)||0;let fl=0;
+      S.tankList.filter(t=>t.fuel===f&&t.cap>0).forEach(t=>{fl+=+val('tl-'+t.id)||0;});
+      tl+=fl;tc+=fl*r;$('#tx-'+f).textContent=fl&&r?'Cost '+money(fl*r):(fl?fmtL(fl)+' litres':'');});
+    $('#tt').textContent=tl?`Total ${fmtL(tl)} litres${tc?' · cost '+money(tc):''}`:'Enter litres for any tank.';},
+  dip(){const tid=val('dtk')||firstTank('petrol'),a=val('da');const cur=tankStock(tid);
+    $('#dn').innerHTML=isNum(a)?`App shows <b>${fmtL(cur)} L</b>. Difference: <b>${(+a-cur>0?'+':'')}${fmtL(+a-cur)} L</b>`:`App shows <b>${fmtL(cur)} L</b>`;}
+};
+
+/* ---------- actions ---------- */
+const ACT={
+  nav(el){go(el.dataset.v);},
+  sub(el){go('more',el.dataset.v||null);},
+  closeSheet(){closeSheet();},
+  doConfirm(){const f=pendingConfirm;pendingConfirm=null;closeSheet();f&&f();},
+  seg(el){const p=el.parentElement;p.dataset.val=el.dataset.v;p.className='seg f-'+el.dataset.v;
+    p.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el));
+    if(p.dataset.live&&LIVE[p.dataset.live])LIVE[p.dataset.live]({target:p});},
+  segm(el){const p=el.parentElement;p.dataset.val=el.dataset.v;
+    p.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===el));
+    if(p.dataset.live&&LIVE[p.dataset.live])LIVE[p.dataset.live]({target:p});},
+
+  dayPrev(){setDate(addDays(curDate,-1));},
+  dayNext(){setDate(addDays(curDate,1),true);},
+  dayToday(){setDate(ymd());},
+
+  finishSetup(){
+    const pp=+val('s-pp'),dp=+val('s-dp');
+    if(!(pp>0&&dp>0))return toast('Enter petrol and diesel rates');
+    const tl=defTanks().map(k=>{const cap=+val('s-c-'+k.id)||0;return{...k,cap,initial:+val('s-i-'+k.id)||0,low:Math.round(cap*.1)};});
+    for(const f of ['petrol','diesel'])if(!tl.some(t=>t.fuel===f&&t.cap>0))return toast('Enter the size of at least one '+f+' tank');
+    const map=defMap(true);
+    MACH.forEach(m=>{const t=tl.find(x=>x.id===map[m.id]);if(!t||t.cap<=0)map[m.id]=tl.find(x=>x.fuel===m.fuel&&x.cap>0).id;});
+    S.pump=val('s-name').trim()||'My Petrol Pump';S.prices={petrol:pp,diesel:dp};
+    S.tankList=tl;S.machTank=map;S.rates[ymd()]={petrol:pp,diesel:dp};curDate=ymd();
+    S.setup=true;save();go('home');toast('Pump is ready');},
+
+  openRate(){openRateSheet(curDate);},
+  saveRate(){
+    const p=+val('rpp'),d=+val('rdd');
+    if(!(p>0&&d>0))return toast('Enter petrol and diesel rates');
+    const eff=val('rdate')||curDate;
+    S.rates[eff]={petrol:p,diesel:d};save();
+    const now=rateFor(ymd());S.prices={petrol:now.petrol,diesel:now.diesel};save();
+    closeSheet();render();
+    toast(eff>curDate?'New rate will start on '+shortDate(eff):'Rates saved');},
+
+  openEndDay(){
+    const dt=curDate,nx=addDays(dt,1),d=dayLitres(dt),c=cash(dt),rec=S.readings[dt];
+    const missing=MACH.filter(m=>!(rec&&rec.m&&rec.m[m.id]&&isNum(rec.m[m.id].c))).map(m=>m.id);
+    const has=missing.length<MACH.length,nr=rateFor(nx);
+    sheet('End day · '+shortDate(dt),`<div class="tally">
+      <div class="line"><span>Petrol sold</span><b>${fmtL(d.petrol.l)} L</b></div>
+      <div class="line"><span>Diesel sold</span><b>${fmtL(d.diesel.l)} L</b></div>
+      <div class="line"><span>Total sale</span><b>${money(d.petrol.amt+d.diesel.amt)}</b></div>
+      <div class="line"><span>Cash to keep / deposit</span><b>${money(c.cash)}</b></div></div>
+      ${!has?`<div class="warnbox bad">No closing readings are saved for today. Enter and save the closing reading of every machine first.</div>`
+        :(missing.length?`<div class="warnbox bad">No closing reading yet for: <b>${missing.join(', ')}</b>. Save them first, or continue if those machines were not used.</div>`:'')}
+      <h3 style="margin-top:16px;font-size:21px">New rates from ${niceDate(nx)}</h3>
+      ${N('Petrol rate (Rs per litre)','erp',nr.petrol||'','class="sel"')}${N('Diesel rate (Rs per litre)','erd',nr.diesel||'','class="sel"')}
+      <p class="muted sm" style="margin:8px 0 0">Tomorrow's opening readings will be filled from today's closing readings.</p>
+      ${has?`<button class="btn block mt" data-act="doEndDay">${missing.length?'End day anyway':'End day and start '+shortDate(nx)}</button>`
+           :`<button class="btn block mt" data-act="goMeters">Enter meter readings first</button>`}`);},
+  goMeters(){closeSheet();go('meters');},
+  doEndDay(){
+    const p=+val('erp'),d=+val('erd');
+    if(!(p>0&&d>0))return toast('Enter the new petrol and diesel rates');
+    const nx=addDays(curDate,1);
+    S.rates[nx]={petrol:p,diesel:d};S.workDate=nx;save();
+    const now=rateFor(ymd());S.prices={petrol:now.petrol,diesel:now.diesel};
+    curDate=nx;save();closeSheet();go('home');
+    toast('Day ended. Now working on '+shortDate(nx));},
+
+  saveMeters(){
+    const rt=rateFor(curDate);
+    if(!(rt.petrol>0&&rt.diesel>0))return toast('Set the petrol and diesel rates first');
+    const rec={m:{}};let any=false;
+    for(const m of MACH){const o=val('o-'+m.id),c=val('c-'+m.id);
+      if(isNum(c)&&!isNum(o))return toast(m.id+': enter the opening reading');
+      if(isNum(o)&&isNum(c)&&+c<+o)return toast(m.id+': closing is less than opening');
+      if(isNum(o)||isNum(c)){rec.m[m.id]={o:isNum(o)?+o:null,c:isNum(c)?+c:null};any=true;}}
+    if(!any)return toast('Enter at least one reading');
+    S.readings[curDate]=rec;
+    if(!S.rates[curDate]){S.rates[curDate]={petrol:rt.petrol,diesel:rt.diesel};}
+    save();render();toast('Readings saved');},
+
+  openTanker(){
+    const sec=f=>{const tks=S.tankList.filter(t=>t.fuel===f&&t.cap>0);
+      return `<div class="sec f-${f}"><h4>${FUELS[f].name}</h4><div class="grid2">${tks.map(t=>N(esc(t.name)+' litres','tl-'+t.id,'0','class="zero" data-live="tanker"')).join('')}</div>${N('Buy rate (Rs/L), optional','tr-'+f,'0','class="zero" data-live="tanker"')}<div class="muted sm" id="tx-${f}"></div></div>`;};
+    sheet('Tanker received',`${F('Date','tdate',curDate,'type="date"')}${sec('petrol')}${sec('diesel')}
+    ${F('Supplier, optional','tsup','','placeholder="e.g. PSO depot"')}
+    <div class="live" id="tt">Enter litres for any tank.</div>
+    <button class="btn block mt" data-act="saveTanker">Add to stock</button>`);},
+  saveTanker(){
+    const date=val('tdate')||curDate,sup=val('tsup').trim();let n=0;
+    S.tankList.filter(t=>t.cap>0).forEach(t=>{const l=+val('tl-'+t.id)||0,r=+val('tr-'+t.fuel)||0;
+      if(l>0){S.purchases.push({id:uid(),date,fuel:t.fuel,tank:t.id,litres:l,rate:r,supplier:sup});n++;}});
+    if(!n)return toast('Enter litres received');
+    save();closeSheet();render();toast('Stock added');},
+
+  openDip(){
+    const opts=S.tankList.filter(t=>t.cap>0).map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    sheet('Correct stock with dip',`<label class="fld"><span>Tank</span><select id="dtk" data-live="dip">${opts}</select></label>
+    ${N('Actual litres in tank (dip reading)','da','','data-live="dip"')}
+    <div class="live" id="dn"></div><button class="btn block mt" data-act="saveDip">Correct stock</button>`);LIVE.dip();},
+  saveDip(){const a=val('da');if(!isNum(a))return toast('Enter the dip reading');
+    const tid=val('dtk')||firstTank('petrol'),tk=S.tankList.find(t=>t.id===tid),diff=r2(+a-tankStock(tid));
+    if(diff===0){closeSheet();return toast('Stock already matches');}
+    S.adjust.push({id:uid(),date:curDate,fuel:tk.fuel,tank:tid,litres:diff});save();closeSheet();render();toast('Stock corrected');},
+
+  openCust(){sheet('New customer',`${F('Name','cn','','placeholder="Customer name"')}${F('Phone, optional','cp','','type="tel" inputmode="tel" placeholder="03xx xxxxxxx"')}<button class="btn block mt" data-act="saveCust">Save customer</button>`);},
+  saveCust(){const n=val('cn').trim();if(!n)return toast('Enter the customer name');
+    S.customers.push({id:uid(),name:n,phone:val('cp').trim()});save();closeSheet();render();toast('Customer added');},
+  custDetail(el){custDetail(el.dataset.id);},
+
+  openCredit(el){const pre=el&&el.dataset?el.dataset.cust:'';cModes={p:'rs',d:'rs'};
+    const opts=S.customers.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}" ${c.id===pre?'selected':''}>${esc(c.name)}</option>`).join('');
+    const fuelBlock=(f,fuel,label)=>`<div class="sec f-${fuel}"><h4>${label}</h4>
+      <div class="seg mode mini" id="cm${f}" data-val="rs" data-live="credit"><button type="button" data-act="segm" data-v="rs" class="on">Rupees (Rs)</button><button type="button" data-act="segm" data-v="l">Litres</button></div>
+      <label class="fld"><span id="cl${f}">${label} amount (Rs)</span><input id="c${f}v" type="number" inputmode="decimal" step="any" min="0" value="0" class="zero" data-live="credit"></label>
+      <div class="muted sm" id="c${f}x"></div></div>`;
+    sheet('Fuel on udhaar',`<label class="fld"><span>Customer</span><select id="cc"><option value="">${S.customers.length?'Choose customer':'No customers yet'}</option>${opts}</select></label>
+    ${F('Or add a new customer','ccn','','placeholder="New customer name"')}
+    ${F('Date','cdate',curDate,'type="date" data-live="credit"')}
+    ${fuelBlock('p','petrol','Petrol')}${fuelBlock('d','diesel','Diesel')}
+    ${F('Vehicle no., optional','cveh','')}
+    <div class="live" id="cft">Enter petrol, diesel or both.</div>
+    <button class="btn block mt" data-act="saveCredit">Save udhaar</button>`);},
+  saveCredit(){
+    let id=val('cc');const nn=val('ccn').trim();
+    if(!id&&!nn)return toast('Choose or add a customer');
+    const items=[];
+    for(const [f,fuel] of [['p','petrol'],['d','diesel']]){const c=credCalc(f);
+      if(c.a>0||c.l>0){
+        if(!(c.r>0))return toast('Set the '+fuel+' rate for this day first (Home → Change rate)');
+        if(!(c.a>0&&c.l>0))return toast('Check the '+fuel+' entry');
+        items.push({fuel,litres:c.l,rate:c.r,amount:c.a});}}
+    if(!items.length)return toast('Enter petrol, diesel or both');
+    if(!id){id=uid();S.customers.push({id,name:nn,phone:''});}
+    const date=val('cdate')||curDate,veh=val('cveh').trim();
+    items.forEach(it=>S.credits.push({id:uid(),date,cust:id,fuel:it.fuel,litres:it.litres,rate:it.rate,amount:it.amount,vehicle:veh}));
+    save();closeSheet();render();toast('Udhaar saved');},
+
+  openPay(el){const id=el.dataset.cust;const bal=custBal(id);
+    sheet('Payment received',`<div class="muted">${esc(custName(id))} owes ${money(bal)}</div>${N('Amount received (Rs)','pa',bal>0?bal:'')}${F('Note, optional','pn','','placeholder="e.g. cash, JazzCash"')}${D('Date','pd',curDate)}
+    <button class="btn block mt" data-act="savePay" data-cust="${id}">Save payment</button>`);},
+  savePay(el){const a=+val('pa');if(!(a>0))return toast('Enter the amount');
+    S.payments.push({id:uid(),date:val('pd')||curDate,cust:el.dataset.cust,amount:Math.round(a),note:val('pn').trim()});
+    save();closeSheet();render();toast('Payment saved');},
+
+  delCust(el){const id=el.dataset.id;confirmBox('Delete '+custName(id)+' and all their udhaar and payment records?','Delete',()=>{
+    S.customers=S.customers.filter(c=>c.id!==id);S.credits=S.credits.filter(c=>c.cust!==id);S.payments=S.payments.filter(c=>c.cust!==id);save();render();toast('Customer deleted');});},
+
+  openExpense(){sheet('Add expense',`<label class="fld"><span>Type</span><select id="ec">${EXP_CATS.map(c=>`<option>${c}</option>`).join('')}</select></label>${N('Amount (Rs)','ea')}${F('Note, optional','en','')}${D('Date','ed',curDate)}<button class="btn block mt" data-act="saveExpense">Save expense</button>`);},
+  saveExpense(){const a=+val('ea');if(!(a>0))return toast('Enter the amount');
+    S.expenses.push({id:uid(),date:val('ed')||curDate,cat:val('ec'),amount:Math.round(a),note:val('en').trim()});save();closeSheet();render();toast('Expense saved');},
+
+  del(el){const k=el.dataset.kind,id=el.dataset.id,cust=el.dataset.cust;
+    confirmBox('Delete this entry? This cannot be undone.','Delete',()=>{S[k]=S[k].filter(x=>x.id!==id);save();render();toast('Deleted');if(cust)custDetail(cust);});},
+
+  saveSettings(){
+    const tl=S.tankList.map(t=>({...t,cap:+val('st-c-'+t.id)||0,low:+val('st-l-'+t.id)||0,initial:+val('st-i-'+t.id)||0}));
+    for(const f of ['petrol','diesel'])if(!tl.some(t=>t.fuel===f&&t.cap>0))return toast('Keep at least one '+f+' tank with a size above 0');
+    const map={...S.machTank};
+    MACH.forEach(m=>{const sel=$('#st-m-'+m.id);if(sel&&sel.value)map[m.id]=sel.value;
+      const t=tl.find(x=>x.id===map[m.id]);if(!t||t.cap<=0)map[m.id]=tl.find(x=>x.fuel===m.fuel&&x.cap>0).id;});
+    S.pump=val('st-name').trim()||'My Petrol Pump';S.tankList=tl;S.machTank=map;
+    save();go('more');toast('Settings saved');},
+
+  exportData(){const t=$('#bk');t.value=JSON.stringify(S);t.style.display='block';$('#cpy').style.display='block';t.focus();t.select();},
+  copyData(){const t=$('#bk');t.select();let ok=false;
+    try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value);ok=true;}}catch(e){}
+    if(!ok){try{ok=document.execCommand('copy');}catch(e){}}
+    toast(ok?'Copied':'Press and hold the text, then tap Copy');},
+  importData(){const t=val('rs').trim();if(!t)return toast('Paste your backup text first');
+    try{const o=JSON.parse(t);if(!o||typeof o!=='object'||!o.readings||!o.tanks)throw 0;
+      confirmBox('Replace all data on this phone with the backup?','Restore',()=>{S=migrate(o);S.setup=true;curDate=(S.workDate&&S.workDate>ymd())?S.workDate:ymd();save();go('home');toast('Backup restored');});
+    }catch(e){toast('That is not a valid backup');}},
+  resetAll(){confirmBox('This deletes all pump data from this phone. Make a backup first if you need it.','Delete everything',()=>{S=defaults();curDate=ymd();save();go('home');toast('All data deleted');});}
+};
+
+document.addEventListener('click',e=>{
+  if(e.target&&e.target.id==='dpick'){try{e.target.showPicker&&e.target.showPicker();}catch(x){}return;}
+  const el=e.target.closest('[data-act]');if(!el)return;const a=ACT[el.dataset.act];if(a)a(el,e);});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.id==='custQ'){custQ=t.value;const pos=t.selectionStart;render();const n=$('#custQ');if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(x){}}return;}
+  if(t.closest&&t.closest('.mcard'))updateMeterLive();
+  const lv=t.getAttribute&&t.getAttribute('data-live');if(lv&&LIVE[lv])LIVE[lv](e);
+});
+document.addEventListener('change',e=>{if(e.target.id==='dpick'&&e.target.value)setDate(e.target.value);});
+/* zero fields: the 0 clears when you tap in, and comes back if left empty */
+document.addEventListener('focusin',e=>{const t=e.target;if(!t.classList)return;
+  if(t.classList.contains('zero')&&t.value!==''&&+t.value===0){t.value='';}
+  else if(t.classList.contains('zero')||t.classList.contains('sel')){try{t.select();}catch(x){}}});
+document.addEventListener('focusout',e=>{const t=e.target;
+  if(t.classList&&t.classList.contains('zero')&&t.value===''){t.value='0';t.dispatchEvent(new Event('input',{bubbles:true}));}});
+
+render();
+})();
+</script>
+</body>
+</html>
